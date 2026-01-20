@@ -3,6 +3,25 @@ from datetime import datetime
 from collections import defaultdict
 import os
 
+from utils.file_handler import (
+    read_sales_data,
+    parse_transactions,
+)
+from utils.data_processor import (
+    calculate_total_revenue,
+    region_wise_sales,
+    top_selling_products,
+    customer_analysis,
+    daily_sales_trend,
+    find_peak_sales_day,
+    low_performing_products,
+)
+from utils.api_handler import (
+    fetch_all_products,
+    create_product_mapping,
+    enrich_sales_data,
+)
+
 def clean_sales_data(file_path):
     total_records = 0
     invalid_records = 0
@@ -236,8 +255,106 @@ def generate_sales_report(transactions, enriched_transactions, output_file='outp
 
 
 def main():
-    file_path = "sales_data.txt"
-    clean_sales_data(file_path)
+    """
+    Main execution function
+    """
+    try:
+        print("=" * 40)
+        print("SALES ANALYTICS SYSTEM")
+        print("=" * 40)
+        print()
+
+        # 1. Read sales data
+        print("[1/10] Reading sales data...")
+        raw_lines = read_sales_data("sales_data.txt")
+        print(f"✓ Successfully read {len(raw_lines)} transactions\n")
+
+        # 2. Parse and clean
+        print("[2/10] Parsing and cleaning data...")
+        transactions = parse_transactions(raw_lines)
+        print(f"✓ Parsed {len(transactions)} records\n")
+
+        # 3. Display filter options
+        regions = sorted({tx["Region"] for tx in transactions})
+        amounts = [tx["Quantity"] * tx["UnitPrice"] for tx in transactions]
+
+        print("[3/10] Filter Options Available:")
+        print(f"Regions: {', '.join(regions)}")
+        print(f"Amount Range: ₹{min(amounts):,.0f} - ₹{max(amounts):,.0f}\n")
+
+        apply_filter = input("Do you want to filter data? (y/n): ").strip().lower()
+
+        region_filter = None
+        min_amount = None
+        max_amount = None
+
+        if apply_filter == "y":
+            region_filter = input("Enter region (or press Enter to skip): ").strip()
+            if region_filter == "":
+                region_filter = None
+
+            min_val = input("Enter minimum amount (or press Enter to skip): ").strip()
+            max_val = input("Enter maximum amount (or press Enter to skip): ").strip()
+
+            min_amount = float(min_val) if min_val else None
+            max_amount = float(max_val) if max_val else None
+
+        print()
+
+        # 4. Validate & filter
+        print("[4/10] Validating transactions...")
+        valid_transactions, invalid_count, summary = validate_and_filter(
+            transactions,
+            region=region_filter,
+            min_amount=min_amount,
+            max_amount=max_amount,
+        )
+        print(f"✓ Valid: {len(valid_transactions)} | Invalid: {invalid_count}\n")
+
+        # 5. Analysis
+        print("[5/10] Analyzing sales data...")
+        _ = calculate_total_revenue(valid_transactions)
+        _ = region_wise_sales(valid_transactions)
+        _ = top_selling_products(valid_transactions)
+        _ = customer_analysis(valid_transactions)
+        _ = daily_sales_trend(valid_transactions)
+        _ = find_peak_sales_day(valid_transactions)
+        _ = low_performing_products(valid_transactions)
+        print("✓ Analysis complete\n")
+
+        # 6. Fetch API data
+        print("[6/10] Fetching product data from API...")
+        api_products = fetch_all_products()
+        print(f"✓ Fetched {len(api_products)} products\n")
+
+        # 7. Enrich data
+        print("[7/10] Enriching sales data...")
+        product_mapping = create_product_mapping(api_products)
+        enriched_transactions = enrich_sales_data(valid_transactions, product_mapping)
+
+        enriched_count = sum(1 for tx in enriched_transactions if tx["API_Match"])
+        success_rate = (enriched_count / len(enriched_transactions)) * 100 if enriched_transactions else 0
+
+        print(f"✓ Enriched {enriched_count}/{len(enriched_transactions)} "
+              f"transactions ({success_rate:.1f}%)\n")
+
+        # 8. Save enriched data (already done inside enrich function)
+        print("[8/10] Saving enriched data...")
+        print("✓ Saved to: data/enriched_sales_data.txt\n")
+
+        # 9. Generate report
+        print("[9/10] Generating report...")
+        generate_sales_report(valid_transactions, enriched_transactions)
+        print("✓ Report saved to: output/sales_report.txt\n")
+
+        # 10. Done
+        print("[10/10] Process Complete!")
+        print("=" * 40)
+
+    except Exception as e:
+        print("\n❌ An unexpected error occurred.")
+        print(f"Details: {e}")
+        print("Please check input files or try again.")
 
 
 if __name__ == "__main__":
