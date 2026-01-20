@@ -253,6 +253,95 @@ def generate_sales_report(transactions, enriched_transactions, output_file='outp
 
     print(f"📄 Sales report generated at: {output_file}")
 
+def validate_and_filter(transactions, region=None, min_amount=None, max_amount=None):
+    """
+    Validates transactions and applies optional filters
+
+    Returns:
+    - valid_transactions: list
+    - invalid_count: int
+    - filter_summary: dict
+    """
+
+    valid_transactions = []
+    invalid_count = 0
+
+    filter_summary = {
+        "total_input": len(transactions),
+        "invalid": 0,
+        "filtered_by_region": 0,
+        "filtered_by_amount": 0,
+        "final_count": 0,
+    }
+
+    # Display available regions
+    available_regions = sorted({tx.get("Region") for tx in transactions if tx.get("Region")})
+    print(f"Available Regions: {', '.join(available_regions)}")
+
+    # Display transaction amount range
+    amounts = [
+        tx["Quantity"] * tx["UnitPrice"]
+        for tx in transactions
+        if isinstance(tx.get("Quantity"), int) and isinstance(tx.get("UnitPrice"), (int, float))
+    ]
+
+    if amounts:
+        print(f"Transaction Amount Range: ₹{min(amounts):,.0f} - ₹{max(amounts):,.0f}")
+
+    for tx in transactions:
+        try:
+            # ---------------- VALIDATION RULES ----------------
+            if not all(k in tx for k in [
+                "TransactionID", "ProductID", "CustomerID",
+                "Quantity", "UnitPrice", "Region"
+            ]):
+                invalid_count += 1
+                continue
+
+            if not tx["TransactionID"].startswith("T"):
+                invalid_count += 1
+                continue
+
+            if not tx["ProductID"].startswith("P"):
+                invalid_count += 1
+                continue
+
+            if not tx["CustomerID"].startswith("C"):
+                invalid_count += 1
+                continue
+
+            if tx["Quantity"] <= 0 or tx["UnitPrice"] <= 0:
+                invalid_count += 1
+                continue
+
+            # ---------------- FILTERING ----------------
+            amount = tx["Quantity"] * tx["UnitPrice"]
+
+            if region and tx["Region"] != region:
+                filter_summary["filtered_by_region"] += 1
+                continue
+
+            if min_amount is not None and amount < min_amount:
+                filter_summary["filtered_by_amount"] += 1
+                continue
+
+            if max_amount is not None and amount > max_amount:
+                filter_summary["filtered_by_amount"] += 1
+                continue
+
+            valid_transactions.append(tx)
+
+        except Exception:
+            invalid_count += 1
+
+    filter_summary["invalid"] = invalid_count
+    filter_summary["final_count"] = len(valid_transactions)
+
+    print(f"Records after validation: {filter_summary['total_input'] - invalid_count}")
+    print(f"Final valid records: {filter_summary['final_count']}")
+
+    return valid_transactions, invalid_count, filter_summary
+
 
 def main():
     """
@@ -266,7 +355,7 @@ def main():
 
         # 1. Read sales data
         print("[1/10] Reading sales data...")
-        raw_lines = read_sales_data("sales_data.txt")
+        raw_lines = read_sales_data("data/sales_data.txt")
         print(f"✓ Successfully read {len(raw_lines)} transactions\n")
 
         # 2. Parse and clean
