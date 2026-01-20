@@ -26,11 +26,11 @@ def fetch_all_products():
                 "rating": p.get("rating"),
             })
 
-        print(f"✅ Successfully fetched {len(api_products)} products from API")
+        print(f" Successfully fetched {len(api_products)} products from API")
         return api_products
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ Failed to fetch products from API: {e}")
+        print(f" Failed to fetch products from API: {e}")
         return []
 
 
@@ -90,7 +90,7 @@ def enrich_sales_data(transactions, product_mapping):
     # Save to file
     save_enriched_data(enriched_transactions)
 
-    print(f"✅ Enriched {len(enriched_transactions)} transactions")
+    print(f" Enriched {len(enriched_transactions)} transactions")
     return enriched_transactions
 
 
@@ -128,4 +128,4 @@ def save_enriched_data(enriched_transactions, filename="data/enriched_sales_data
                     row.append(str(value))
             file.write("|".join(row) + "\n")
 
-    print(f"📁 Enriched data saved to '{filename}'")
+    print(f" Enriched data saved to '{filename}'")

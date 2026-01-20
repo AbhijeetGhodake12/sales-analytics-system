@@ -251,7 +251,7 @@ def generate_sales_report(transactions, enriched_transactions, output_file='outp
         for p in unenriched_products:
             f.write(f"- {p}\n")
 
-    print(f"📄 Sales report generated at: {output_file}")
+    print(f" Sales report generated at: {output_file}")
 
 def validate_and_filter(transactions, region=None, min_amount=None, max_amount=None):
     """
@@ -441,7 +441,7 @@ def main():
         print("=" * 40)
 
     except Exception as e:
-        print("\n❌ An unexpected error occurred.")
+        print("\n An unexpected error occurred.")
         print(f"Details: {e}")
         print("Please check input files or try again.")
 
